@@ -4,13 +4,13 @@
 
 <div align="center">
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.0-009688.svg?style=flat-square&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
-[![LangGraph](https://img.shields.io/badge/LangGraph-0.2.28-FF6F00.svg?style=flat-square&logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-asyncpg-4169E1.svg?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.0-009688.svg?style=flat-square&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-asyncpg-4169E1.svg?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![LangGraph](https://img.shields.io/badge/LangGraph-0.2.28-FF6F00.svg?style=flat-square&logo=langchain&logoColor=white)](https://langchain-ai.github.io/langgraph/)
+[![LangChain](https://img.shields.io/badge/LangChain-0.3.1-1C3C3C.svg?style=flat-square&logo=langchain&logoColor=white)](https://python.langchain.com)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
-
-**Production-aware API intelligence that detects documentation drift and automatically opens GitHub Pull Requests with updated documentation.**
 
 </div>
 
@@ -18,12 +18,31 @@
 
 > **DriftGuard** is a production-aware API intelligence platform that analyzes live HTTP traffic, source-code changes, and Git history to detect documentation drift. It uses an AI-powered LangGraph pipeline to analyze API behavior, generate updated technical documentation, and automatically open GitHub Pull Requests for developer review.
 
+```
+Live API Behavior + Source Code + Git History
+                     ↓
+              AI Analysis (LangGraph)
+                     ↓
+               Drift Detection
+                     ↓
+          Documentation Generation
+                     ↓
+      Automated GitHub Pull Request
+```
+
+---
+
+## 📸 Dashboard Preview
+
+![DriftGuard Dashboard](screenshots/dashboard.png)
+
 ---
 
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
 - [Key Features](#-key-features)
+- [Product Screenshots](#-product-screenshots)
 - [How It Works](#-how-it-works)
 - [LangGraph AI Pipeline](#-langgraph-ai-pipeline)
 - [GitHub Automation](#-github-automation)
@@ -42,61 +61,86 @@
 
 ### The Problem: Documentation Drift
 
-In modern software development, APIs evolve at a rapid pace. Developers add endpoints, adjust schemas, alter status codes, and introduce new business logic. Unfortunately, API documentation often lags behind:
+In modern engineering teams, APIs evolve rapidly. Developers introduce new routes, modify payload schemas, adjust status codes, and patch business logic. Traditional API documentation struggles to keep pace:
 
-- **Static Docs Stagnate:** Manually maintained READMEs, Wiki pages, and OpenAPI specs quickly become outdated.
-- **Code vs. Reality Disconnect:** Code annotations describe intended behavior, while observability metrics describe raw telemetry without explaining functionality.
-- **Silent Failures:** Consumers build integrations against outdated documentation, leading to integration bugs and support overhead.
+- **Static Docs Stagnate:** Manually written READMEs, Wiki pages, and OpenAPI specs quickly fall out of sync with real implementations.
+- **Code vs. Reality Disconnect:** Code annotations reflect intended design, while APM dashboards show raw telemetry without explaining functionality.
+- **Integration Friction:** API consumers rely on outdated documentation, causing unexpected payload errors, breaking changes, and support overhead.
 
-### The Solution: DriftGuard
+### The DriftGuard Approach
 
-DriftGuard bridges the gap between **runtime observability**, **source code analysis**, and **developer workflows**:
-
-```
-Live API Behavior + Source Code + Git History
-                     ↓
-              AI Analysis (LangGraph)
-                     ↓
-               Drift Detection
-                     ↓
-          Documentation Generation
-                     ↓
-      Automated GitHub Pull Request
-```
+DriftGuard unifies **runtime telemetry**, **source code analysis**, and **Git version control** into a continuous intelligence loop. By correlating observed HTTP traffic with codebase changes, DriftGuard identifies discrepancies (drift), synthesizes accurate technical documentation, and opens a GitHub Pull Request for human review.
 
 ---
 
 ## ✨ Key Features
 
 ### 📡 Live API Traffic Intelligence
-- Intercepts incoming requests and responses non-intrusively via FastAPI middleware.
-- Captures HTTP methods, endpoint paths, status codes, query parameters, request/response bodies, client IP, user agent, and latency down to the millisecond.
-- Provides per-user data isolation and high-performance asynchronous logging to PostgreSQL.
+- Intercepts incoming HTTP requests and responses non-intrusively using FastAPI middleware.
+- Records HTTP methods, endpoints, status codes, query parameters, request/response payloads, latency, payload sizes, client IP, and user agents.
+- Delivers per-user data isolation and non-blocking asynchronous logging to PostgreSQL.
 
-### 🔍 Dynamic Endpoint Discovery & Normalization
-- Automatically clusters observed traffic into parameterized endpoints (e.g. `/api/v1/users/1001` → `/api/v1/users/{id}`).
-- Aggregates call counts, error rates, average latency, and drift status across the entire API surface.
+### 🔍 Dynamic Endpoint Discovery & Parameter Normalization
+- Automatically identifies API routes from observed traffic and normalizes dynamic segments (e.g. `/api/v1/users/usr_1001` → `/api/v1/users/{id}`).
+- Aggregates call counts, error rates, average latency, and drift status across your entire service.
 
 ### 🧠 AI-Powered Behavioral Analysis
-- Evaluates real HTTP payloads, response patterns, and edge cases to construct behavioral summaries of what endpoints actually do in production.
+- Evaluates real request/response payloads and edge cases to construct accurate behavioral summaries of production endpoints.
 - Detects error spikes, latency anomalies, and schema discrepancies.
 
 ### 🔄 Git-Aware Drift Detection
-- Fetches repository file trees, source files, dependencies, and commit history via the GitHub REST API.
-- Compares commit diffs against existing README and markdown documentation to identify behavioral and architectural drift.
+- Inspects repository file trees, source files, dependencies, and commit diffs via the GitHub REST API.
+- Compares recent code changes against existing documentation to verify whether documentation accurately reflects production behavior.
 
 ### 📝 Autonomous Documentation Generation
 - Produces clean, publication-ready API references, comprehensive READMEs, usage guides, and full **OpenAPI 3.0 JSON specifications**.
-- Automatically captures edge cases and request/response examples derived from real execution logs.
+- Captures real-world edge cases and request/response examples directly from execution telemetry.
 
 ### 🚀 Automated GitHub Pull Requests
-- Creates a dedicated branch (`driftguard/update-docs`), commits updated documentation files (`README.md`, `DOCUMENTATION.md`, or custom paths), and opens a Pull Request with an AI-generated drift summary and review checklist.
+- Creates an isolated branch (`driftguard/update-docs`), commits updated documentation files (`README.md`, `DOCUMENTATION.md`, or custom paths), and opens a Pull Request with an AI-generated drift summary and review checklist.
 
 ### 🔌 Multi-LLM Provider Architecture
 - Prioritized LLM fallback system:
   1. **OpenRouter** (Claude 3.5 Sonnet / GPT-4o)
-  2. **Groq** (Llama 3.3 70B Versatile — high-throughput, low-latency)
+  2. **Groq** (Llama 3.3 70B Versatile — high throughput, low latency)
   3. **Google Gemini** (Gemini 2.5 Flash / Gemini 2.0 Flash)
+
+---
+
+## 🖼️ Product Screenshots
+
+### Overview Console
+The central operations dashboard provides real-time API health metrics, traffic trends, endpoint status, and recent drift alerts.
+
+![Overview Console](screenshots/dashboard.png)
+
+---
+
+### Live Documentation
+Interactive endpoint documentation generated from real observed traffic, including path parameters, response schemas, and curl examples.
+
+![Live Documentation](screenshots/live-documentation.png)
+
+---
+
+### API Intelligence
+Deep behavioral analysis, detected drift reasons, and error pattern breakdowns computed by the LangGraph pipeline.
+
+![API Intelligence](screenshots/api-intelligence.png)
+
+---
+
+### Traffic Logs & Observability
+Real-time stream of intercepted HTTP requests with status filtering, latency tracking, and full payload inspection.
+
+![Traffic Logs](screenshots/traffic-logs.png)
+
+---
+
+### GitHub Automation & PR Workflow
+Connect any repository to scan source code, compare commit diffs, generate updated documentation, and open GitHub Pull Requests.
+
+![GitHub Automation](screenshots/github-integration.png)
 
 ---
 
@@ -128,7 +172,7 @@ flowchart LR
 
 ## 🤖 LangGraph AI Pipeline
 
-DriftGuard leverages **LangGraph** to model the AI analysis workflow as a typed, deterministic state machine:
+DriftGuard models the AI analysis process as a deterministic, typed state machine using **LangGraph**:
 
 ```
 [analyze_behavior] ──► [detect_drift] ──► [generate_docs] ──► END
@@ -249,6 +293,8 @@ DriftGuard/
 │       └── log_service.py         # Log retrieval & filtering service
 ├── frontend/
 │   └── index.html                 # Complete single-page Alpine.js console
+├── screenshots/
+│   └── README.md                  # Screenshot directory guide
 ├── Dockerfile                     # Docker container configuration
 ├── LICENSE                        # MIT License
 ├── migration_user_isolation.py    # Database migration helper
@@ -411,7 +457,7 @@ Navigate to `http://localhost:5500` in your web browser.
 3. **Explore Endpoints**: View discovered endpoints and aggregated latency metrics in the *Overview* tab.
 4. **Inspect API Intelligence**: View AI-generated summaries, edge cases, and request/response examples.
 5. **Re-Analyze Endpoint**: Trigger the LangGraph pipeline to re-evaluate endpoint behavior against recent traffic.
-6. **Connect GitHub Repository**: Navigate to *GitHub Integration* and enter a repository URL (e.g. `https://github.com/Mohith-R17/tracestory`).
+6. **Connect GitHub Repository**: Navigate to *GitHub Integration* and enter a repository URL (e.g. `https://github.com/username/your-api-project`).
 7. **Analyze Repository**: DriftGuard scans the repository files, inspects recent commits, and compares them with documentation.
 8. **Select Destination**: Choose whether to update `README.md`, create `DOCUMENTATION.md`, or write to a custom path.
 9. **Generate Docs & Open PR**: Click **Generate Documentation & Open PR**.
