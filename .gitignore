@@ -82,3 +82,16 @@ railway.toml
 # Jupyter (if used)
 # ─────────────────────────────
 .ipynb_checkpoints/
+
+# ─────────────────────────────
+# Local Scratch / Test Scripts
+# ─────────────────────────────
+test_config.py
+test_import.py
+verify_config.py
+verify_settings.py
+discover_models.ps1
+start_server.bat
+test_api.bat
+error.txt
+output.txt

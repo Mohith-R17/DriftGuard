@@ -29,9 +29,20 @@ def get_llm(use_gemini: bool = False):
     Returns LLM instance.
 
     Priority:
-      1. Groq (llama-3.3-70b) — 14,400 req/day, 30 req/min, very fast
-      2. Gemini 2.5 Flash     — fallback if no Groq key
+      1. OpenRouter — if OPENROUTER_API_KEY is set
+      2. Groq (llama-3.3-70b) — 14,400 req/day, 30 req/min, very fast
+      3. Gemini 2.5 Flash — fallback if no Groq key
     """
+    # ── OpenRouter (primary) ───────────────────────────────────────
+    if settings.openrouter_api_key:
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model=settings.openrouter_model,
+            openai_api_key=settings.openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1",
+            temperature=0.2,
+        )
+
     # ── Groq (primary) ───────────────────────────────────────
     if settings.grok_api_key:
         from langchain_groq import ChatGroq
@@ -52,7 +63,7 @@ def get_llm(use_gemini: bool = False):
         )
 
     raise RuntimeError(
-        "No AI API key found. Add GROK_API_KEY or GEMINI_API_KEY to .env"
+        "No AI API key found. Add OPENROUTER_API_KEY, GROK_API_KEY, or GEMINI_API_KEY to .env"
     )
 
 

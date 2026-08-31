@@ -4,7 +4,7 @@ Traffic Capture Middleware
 Captures every HTTP request/response and logs it to Neon.
 
 Key changes for user isolation:
-- Skips LiveDocAI's own internal routes (no point monitoring ourselves)
+- Skips DriftGuard's own internal routes (no point monitoring ourselves)
 - Extracts user_id from JWT Bearer token if present
 - Tags each log with the user_id
 """
@@ -20,7 +20,7 @@ from starlette.types import ASGIApp
 
 logger = logging.getLogger(__name__)
 
-# ── Routes to SKIP — LiveDocAI's own internal API ────────────────────────────
+# ── Routes to SKIP — DriftGuard's own internal API ────────────────────────────
 SKIP_PREFIXES = (
     "/api/logs",
     "/api/endpoints",

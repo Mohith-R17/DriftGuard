@@ -1,5 +1,5 @@
 """
-LiveDocAI — Main Application Entry Point
+DriftGuard — Main Application Entry Point
 """
 # trigger deploy
 

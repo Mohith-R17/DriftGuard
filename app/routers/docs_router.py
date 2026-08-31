@@ -92,6 +92,6 @@ async def export_openapi(
 
     return {
         "openapi": "3.0.0",
-        "info": {"title": "LiveDocAI Export", "version": "1.0.0"},
+        "info": {"title": "DriftGuard Export", "version": "1.0.0"},
         "paths": paths,
     }

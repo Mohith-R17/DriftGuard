@@ -23,9 +23,12 @@ from typing import Optional, Literal, List
 from datetime import datetime
 
 from app.database import get_db
+from app.config import get_settings
+from sqlalchemy import text
 
 router = APIRouter(prefix="/api/github", tags=["GitHub"])
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -37,7 +40,7 @@ class RepoRequest(BaseModel):
 class AnalyzeRequest(BaseModel):
     owner: str
     repo: str
-    token: str
+    token: Optional[str] = None
     doc_target: Literal["readme", "documentation_md", "custom"]
     custom_path: Optional[str] = None
     user_email: Optional[str] = None
@@ -45,7 +48,7 @@ class AnalyzeRequest(BaseModel):
 class CreatePRRequest(BaseModel):
     owner: str
     repo: str
-    token: str
+    token: Optional[str] = None
     doc_target: Literal["readme", "documentation_md", "custom"]
     custom_path: Optional[str] = None
     generated_docs: str
@@ -53,7 +56,7 @@ class CreatePRRequest(BaseModel):
     drift_detected: Optional[str] = "UNKNOWN"
     drift_summary: Optional[str] = None
     commit_sha: Optional[str] = None
-    branch_name: Optional[str] = "livedocai/update-docs"
+    branch_name: Optional[str] = "driftguard/update-docs"
     user_email: Optional[str] = None
 
 
@@ -83,28 +86,63 @@ def get_target_path(doc_target: str, custom_path: Optional[str]) -> str:
     return "DOCUMENTATION.md"
 
 
+async def resolve_github_token(
+    token: Optional[str] = None,
+    user_email: Optional[str] = None,
+    db: Optional[AsyncSession] = None
+) -> Optional[str]:
+    """
+    Resolves the best available GitHub token with prioritized fallback:
+      1. Explicitly provided token in request payload
+      2. User's saved OAuth token from database (via user_email)
+      3. Environment-level default token (settings.github_token)
+    """
+    if token and isinstance(token, str) and token.strip():
+        return token.strip()
+
+    if user_email and db:
+        try:
+            result = await db.execute(
+                text("SELECT github_token FROM users WHERE email = :email"),
+                {"email": user_email.lower().strip()}
+            )
+            row = result.fetchone()
+            if row and row.github_token and row.github_token.strip():
+                return row.github_token.strip()
+        except Exception as e:
+            logger.warning(f"[GitHub] Failed to query token for user {user_email}: {e}")
+            await db.rollback()
+
+    if settings.github_token and settings.github_token.strip():
+        return settings.github_token.strip()
+
+    return None
+
+
 def gh_headers(token: Optional[str]) -> dict:
     h = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "LiveDocAI/1.0",
+        "User-Agent": "DriftGuard/1.0",
     }
-    if token:
-        h["Authorization"] = f"Bearer {token}"
+    if token and isinstance(token, str) and token.strip():
+        clean = token.strip()
+        h["Authorization"] = clean if clean.startswith("Bearer ") or clean.startswith("token ") else f"Bearer {clean}"
     return h
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/repo")
-async def get_repo_info(body: RepoRequest):
+async def get_repo_info(body: RepoRequest, db: AsyncSession = Depends(get_db)):
     """Fetch repo info + recent commits. Proxied to avoid CORS."""
     owner, repo = parse_repo_url(body.repo_url)
     if not owner or not repo:
         raise HTTPException(status_code=400,
             detail="Invalid GitHub URL. Use: https://github.com/username/repo-name")
 
-    headers = gh_headers(body.token)
+    resolved_token = await resolve_github_token(body.token, db=db)
+    headers = gh_headers(resolved_token)
     async with httpx.AsyncClient(timeout=15.0) as client:
         repo_res = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
@@ -135,12 +173,13 @@ async def get_repo_info(body: RepoRequest):
 
 
 @router.post("/analyze")
-async def analyze_repo(body: AnalyzeRequest):
+async def analyze_repo(body: AnalyzeRequest, db: AsyncSession = Depends(get_db)):
     """
     Read code from GitHub + detect diff-based drift + generate docs.
     This is the core intelligence endpoint.
     """
-    headers = gh_headers(body.token)
+    resolved_token = await resolve_github_token(body.token, user_email=body.user_email, db=db)
+    headers = gh_headers(resolved_token)
     owner, repo = body.owner, body.repo
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -150,8 +189,9 @@ async def analyze_repo(body: AnalyzeRequest):
             f"https://api.github.com/repos/{owner}/{repo}/git/trees/HEAD?recursive=1",
             headers=headers)
         if not tree_res.is_success:
+            err = tree_res.json().get("message", tree_res.text[:200]) if tree_res.text else "Could not read repo."
             raise HTTPException(status_code=tree_res.status_code,
-                detail="Could not read repo. Make sure the token has 'repo' scope.")
+                detail=f"Could not read repo: {err}. Make sure repository exists and token is valid.")
         tree = tree_res.json().get("tree", [])
 
         # ── Select best files to read ─────────────────────────
@@ -287,127 +327,49 @@ REASON: one sentence explaining what changed that makes docs outdated, or "Docum
     deps_str = ', '.join(deps_lines) if deps_lines else 'Not found'
 
     code_section = "\n\n".join([
-        f"### {path}\n```\n{code[:1500]}\n```"
-        for path, code in list(file_contents.items())[:5]
-        if path not in ['requirements.txt','package.json','pyproject.toml']
-    ]) or "No source files found."
-
-    file_list = list(file_contents.keys())
-
-    # Single Gemini call — consolidate to avoid rate limits (free tier: 5 req/min)
-    proj_name = repo_info.get('name', repo)
-    proj_desc = repo_info.get('description', '')
-    proj_lang = repo_info.get('language', 'Unknown')
-    proj_url  = f"https://github.com/{owner}/{repo}"
-
-    deps_content = (file_contents.get('requirements.txt','') or
-                   file_contents.get('package.json','') or
-                   file_contents.get('pyproject.toml',''))
-    deps_lines = [l.strip() for l in deps_content.split('\n')
-                  if l.strip() and not l.startswith('#')][:20]
-    deps_str = ', '.join(deps_lines) if deps_lines else 'Not found'
-
-    code_section = "\n\n".join([
         f"### {path}\n```\n{code[:2000]}\n```"
         for path, code in list(file_contents.items())[:6]
         if path not in ['requirements.txt','package.json','pyproject.toml']
     ]) or "No source files found."
 
     file_list = list(file_contents.keys())
+    traffic_summary = await _get_traffic_summary()
 
-    # One comprehensive prompt instead of 3 separate calls
-    full_prompt = f"""You are a senior technical writer. Write professional, modern documentation for this project.
+    # One comprehensive prompt
+    full_prompt = f"""You are an expert technical writer. Write a comprehensive, production-ready README.md for this repository.
 
-PROJECT: {proj_name}
-DESCRIPTION: {proj_desc}
-LANGUAGE: {proj_lang}
-REPO: {proj_url}
-DEPENDENCIES: {deps_str}
-FILES: {', '.join(file_list)}
+Project: {proj_name}
+Description: {proj_desc or 'API service'}
+Language: {proj_lang}
+Dependencies: {deps_str}
+Live API Observability & Traffic:
+{traffic_summary}
 
-SOURCE CODE:
+Source code excerpts:
 {code_section[:4000]}
 
-EXISTING README:
-{readme_content[:1500] if readme_content else 'None'}
-
-Write a complete README.md following this EXACT structure:
-
-<div align="center">
-
+Write a complete, professional README.md with these exact sections:
 # {proj_name}
+> {proj_desc or 'Autonomous API Service'}
 
-> {proj_desc or 'A powerful development tool.'}
+## 🚀 Features
+(4-6 key features based on the code)
 
-![Language](https://img.shields.io/badge/{proj_lang}-blue?style=for-the-badge)
-![GitHub Stars](https://img.shields.io/github/stars/{owner}/{repo}?style=for-the-badge)
+## 📦 Tech Stack
+(List key technologies from dependencies)
 
-</div>
+## 📡 API Reference
+(Document main endpoints with methods, paths, request/response examples based on the code)
 
----
-
-## 📋 Table of Contents
-- [Overview](#-overview)
-- [Features](#-features)
-- [Getting Started](#-getting-started)
-- [Usage](#-usage)
-- [Project Structure](#-project-structure)
-- [Tech Stack](#️-tech-stack)
-- [Contributing](#-contributing)
-
----
-
-## 🎯 Overview
-[Write 2-3 paragraphs based on actual code: what it does, who it's for, what problem it solves]
-
-## ✨ Features
-[6-8 bullet points with emoji — extract REAL features from the source code]
-- 🔥 **Feature** — description
-
-## 🚀 Getting Started
-
+## 🛠️ Getting Started
 ### Prerequisites
-[Based on actual language/deps found]
-
 ### Installation
-```bash
-[Exact correct commands]
-```
-
-### Quick Start
-```bash
-[Exact command to run based on code]
-```
-
-## 📖 Usage
-[2-3 concrete examples based on actual code]
-
-## 📁 Project Structure
-```
-{proj_name}/
-[List actual files with comments]
-```
-
-## 🛠️ Tech Stack
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-[From actual deps]
-
-## ⚙️ Configuration
-[Only if env vars found in code]
+### Running the App
 
 ## 🤝 Contributing
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-<div align="center">
-*Documentation auto-generated by [LiveDocAI](https://github.com) — Production-Aware API Intelligence*
-</div>
 
 Output ONLY the Markdown. No explanation before or after."""
 
@@ -423,7 +385,7 @@ Output ONLY the Markdown. No explanation before or after."""
 
 > {drift_summary_text}
 
-*This documentation was auto-regenerated by LiveDocAI to reflect the latest code changes.*
+*This documentation was auto-regenerated by DriftGuard to reflect the latest code changes.*
 
 ---
 """
@@ -444,10 +406,17 @@ Output ONLY the Markdown. No explanation before or after."""
 @router.post("/create-pr")
 async def create_pull_request(body: CreatePRRequest, db: AsyncSession = Depends(get_db)):
     """Create a branch, commit the docs, and open a PR."""
-    headers = gh_headers(body.token)
+    resolved_token = await resolve_github_token(body.token, user_email=body.user_email, db=db)
+    if not resolved_token:
+        raise HTTPException(
+            status_code=401,
+            detail="GitHub write authentication required. Please provide a Personal Access Token with 'repo' scope or sign in via GitHub."
+        )
+
+    headers = gh_headers(resolved_token)
     owner, repo = body.owner, body.repo
     file_path = get_target_path(body.doc_target, body.custom_path)
-    branch = body.branch_name or "livedocai/update-docs"
+    branch = body.branch_name or "driftguard/update-docs"
 
     async with httpx.AsyncClient(timeout=30.0) as client:
 
@@ -455,22 +424,28 @@ async def create_pull_request(body: CreatePRRequest, db: AsyncSession = Depends(
         repo_res = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
         if not repo_res.is_success:
-            raise HTTPException(status_code=400, detail="Could not fetch repo info.")
+            err = repo_res.json().get("message", repo_res.text[:200]) if repo_res.text else "Could not fetch repo info."
+            raise HTTPException(status_code=repo_res.status_code, detail=f"Could not fetch repo info: {err}")
         default_branch = repo_res.json().get("default_branch", "main")
 
         ref_res = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/{default_branch}",
             headers=headers)
         if not ref_res.is_success:
-            raise HTTPException(status_code=400,
-                detail=f"Could not get branch '{default_branch}'.")
+            err = ref_res.json().get("message", ref_res.text[:200]) if ref_res.text else "Could not get branch ref."
+            raise HTTPException(status_code=ref_res.status_code,
+                detail=f"Could not get branch '{default_branch}': {err}")
         base_sha = ref_res.json()["object"]["sha"]
 
         # Create branch (ignore 422 = already exists)
-        await client.post(
+        branch_res = await client.post(
             f"https://api.github.com/repos/{owner}/{repo}/git/refs",
             headers=headers,
             json={"ref": f"refs/heads/{branch}", "sha": base_sha})
+        if branch_res.status_code == 401:
+            raise HTTPException(status_code=401, detail="GitHub authentication failed while creating branch. Token is invalid or expired.")
+        if branch_res.status_code == 403:
+            raise HTTPException(status_code=403, detail="GitHub write access denied while creating branch. Make sure your token has 'repo' (write) scope.")
 
         # Get existing file SHA if file exists
         file_sha = None
@@ -483,7 +458,7 @@ async def create_pull_request(body: CreatePRRequest, db: AsyncSession = Depends(
         # Commit the file
         content_b64 = base64.b64encode(body.generated_docs.encode("utf-8")).decode("utf-8")
         payload = {
-            "message": f"docs: update {file_path} via LiveDocAI 🤖",
+            "message": f"docs: update {file_path} via DriftGuard 🤖",
             "content": content_b64,
             "branch":  branch,
         }
@@ -494,8 +469,19 @@ async def create_pull_request(body: CreatePRRequest, db: AsyncSession = Depends(
             f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}",
             headers=headers, json=payload)
         if not file_res.is_success:
+            err_msg = file_res.text[:300]
+            try:
+                err_json = file_res.json()
+                if "message" in err_json:
+                    err_msg = err_json["message"]
+            except Exception:
+                pass
+            if file_res.status_code == 401:
+                raise HTTPException(status_code=401, detail=f"GitHub authentication required for writing {file_path}: {err_msg}")
+            if file_res.status_code == 403:
+                raise HTTPException(status_code=403, detail=f"GitHub write permission denied for {file_path}: {err_msg}")
             raise HTTPException(status_code=400,
-                detail=f"Could not write file: {file_res.text[:300]}")
+                detail=f"Could not write file: {err_msg}")
 
         # Open PR
         drift_note = ""
@@ -506,10 +492,10 @@ async def create_pull_request(body: CreatePRRequest, db: AsyncSession = Depends(
             f"https://api.github.com/repos/{owner}/{repo}/pulls",
             headers=headers,
             json={
-                "title": f"docs: LiveDocAI — production-aware documentation update 🤖",
+                "title": f"docs: DriftGuard — autonomous documentation update 🤖",
                 "body": (
                     f"## 📄 Automated Documentation Update\n\n"
-                    f"This PR was automatically generated by **LiveDocAI**.\n\n"
+                    f"This PR was automatically generated by **DriftGuard**.\n\n"
                     f"**What was analyzed:**\n"
                     f"- ✅ Source code structure and logic\n"
                     f"- ✅ Dependencies and tech stack\n"
@@ -532,8 +518,15 @@ async def create_pull_request(body: CreatePRRequest, db: AsyncSession = Depends(
             }
 
         if not pr_res.is_success:
+            err_msg = pr_res.text[:300]
+            try:
+                err_json = pr_res.json()
+                if "message" in err_json:
+                    err_msg = err_json["message"]
+            except Exception:
+                pass
             raise HTTPException(status_code=400,
-                detail=f"Could not create PR: {pr_res.text[:300]}")
+                detail=f"Could not create PR: {err_msg}")
 
         pr_data = pr_res.json()
         pr_url  = pr_data.get("html_url")

@@ -4,7 +4,7 @@ from typing import List
 
 
 class Settings(BaseSettings):
-    app_name:    str = "LiveDocAI"
+    app_name:    str = "DriftGuard"
     app_version: str = "1.0.0"
     debug:       bool = False
     secret_key:  str = "change-me-in-production"
@@ -16,7 +16,11 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model:   str = "gemini-2.5-flash"
 
-    # Groq (primary)
+    # OpenRouter (primary, when no Groq key)
+    openrouter_api_key: str = ""
+    openrouter_model:   str = "anthropic/claude-3.5-sonnet"
+
+    # Groq (fallback)
     grok_api_key: str = ""
     groq_model:   str = "llama-3.3-70b-versatile"
 
