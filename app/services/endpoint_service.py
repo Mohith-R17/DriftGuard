@@ -25,7 +25,7 @@ class EndpointService:
     def _base_query(self):
         q = select(Endpoint)
         if self.user_id:
-            q = q.where(Endpoint.user_id == self.user_id)
+            q = q.where((Endpoint.user_id == self.user_id) | (Endpoint.user_id.is_(None)))
         return q
 
     async def get_or_create(self, method: str, path: str, user_id: Optional[str] = None) -> Endpoint:
