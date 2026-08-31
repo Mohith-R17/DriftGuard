@@ -91,16 +91,21 @@ class EndpointService:
         ep = await self.get_by_id(endpoint_id)
         if not ep:
             return
-        prefix = ep.path_pattern.split("{")[0].rstrip("/") or "/"
+        
         q = (
             select(
                 func.count().label("total"),
                 func.avg(APILog.latency_ms).label("avg_lat"),
                 func.sum(case((APILog.status_code >= 400, 1), else_=0)).label("errors"),
             )
-            .where(APILog.path.like(f"{prefix}%"))
             .where(APILog.method == ep.method)
         )
+        if "{" in ep.path_pattern:
+            prefix = ep.path_pattern.split("{")[0].rstrip("/")
+            q = q.where(APILog.path.like(f"{prefix}%"))
+        else:
+            q = q.where(APILog.path == ep.path_pattern)
+            
         if ep.user_id:
             q = q.where(APILog.user_id == ep.user_id)
         stats = await self.db.execute(q)
