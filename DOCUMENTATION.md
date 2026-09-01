@@ -3,64 +3,95 @@
 
 ## 🚀 Features
 
-* **Real-time Traffic Capture & Observability**: Non-blocking middleware (`TrafficCaptureMiddleware`) passively captures API requests, responses, latency, headers, and status codes across all production endpoints.
-* **AI-Powered Drift Detection**: Powered by LangChain, LangGraph, and Google Gemini / Groq to analyze schema changes, route mutations, and payload structural shifts against your existing API documentation.
-* **Automated GitHub Pull Requests**: Automatically generates updated OpenAPI specs or documentation files and submits GitHub PRs directly to your repository when drift is detected.
-* **Multi-Tenant API Isolation**: Full user authentication using JWT and Async SQLAlchemy to isolate log telemetry and endpoint discovery per organization.
-* **OpenTelemetry Integration**: Out-of-the-box OpenTelemetry tracing and metrics instrumentation for production observability stack integrations.
-* **Automated Traffic Simulator**: Built-in background engine to simulate baseline production traffic and test drift detection triggers during staging deployments.
+* **Real-Time Traffic Capture Middleware**: Intercepts incoming HTTP requests and responses to monitor payloads, headers, status codes, and latency with minimal overhead.
+* **AI-Driven Schema Drift Detection**: Integrates LangChain, LangGraph, and LLM models (Google Gemini / Groq) to analyze actual runtime payloads against static API documentation.
+* **Automated Pull Request Generation**: Automatically opens GitHub Pull Requests with updated OpenAPI specifications and documentation whenever drift is identified.
+* **Multi-Tenant Endpoint Observability**: Groups logs by user, path, and method to track API metrics, latency trends, and usage velocity.
+* **Autonomous Demo Traffic Simulator**: Includes an optional background traffic generation task for continuous pipeline testing and integration validation.
 
 ## 📦 Tech Stack
 
-* **Framework & Server**: FastAPI `0.115.0`, Uvicorn `0.30.6`
-* **Database & ORM**: PostgreSQL, SQLAlchemy (AsyncIO) `2.0.35`, AsyncPG `0.29.0`, Alembic `1.13.3`
-* **Data Validation & Settings**: Pydantic `2.9.2`, Pydantic-Settings `2.5.2`
-* **AI & LLM Framework**: LangChain `0.3.1`, LangGraph `0.2.28`, LangChain-Groq `0.2.1`, LangChain-Google-GenAI `2.0.7`, Google Generative AI `0.8.3`
-* **Security & Auth**: PyJWT `2.8.0`, Passlib (Bcrypt) `1.7.4`, Bcrypt `4.2.1`
-* **HTTP Client & Observability**: HTTPX `0.27.2`, OpenTelemetry API/SDK `1.27.0`
+| Category | Technology |
+| :--- | :--- |
+| **Framework & Server** | FastAPI (`0.115.0`), Uvicorn (`0.30.6`), Pydantic (`2.9.2`) |
+| **Database & ORM** | PostgreSQL, SQLAlchemy AsyncIO (`2.0.35`), Asyncpg (`0.29.0`), Alembic (`1.13.3`) |
+| **AI Agent & LLM** | LangChain (`0.3.1`), LangGraph (`0.2.28`), LangChain-Groq (`0.2.1`), LangChain-Google-GenAI (`2.0.7`) |
+| **Security & Auth** | PyJWT (`2.8.0`), Passlib (`1.7.4`), Bcrypt (`4.2.1`) |
+| **Observability & HTTP** | OpenTelemetry SDK (`1.27.0`), HTTPX (`0.27.2`) |
 
 ## 📡 API Reference
 
 ### Products
 
-#### Fetch Products
+#### List Products
 ```http
 GET /api/v1/products
 ```
+Retrieves a paginated list of available products.
 
-**Response (`200 OK`)**
+##### Response Example (200 OK)
 ```json
-[
-  {
-    "id": "prod_1001",
-    "name": "Standard Subscription",
-    "price": 29.99,
-    "status": "active"
-  }
-]
+{
+  "total": 2,
+  "items": [
+    {
+      "id": "prod_1001",
+      "name": "Cloud Observability Agent",
+      "price": 199.99,
+      "status": "active"
+    },
+    {
+      "id": "prod_1002",
+      "name": "API Intelligence Engine",
+      "price": 499.00,
+      "status": "active"
+    }
+  ]
+}
 ```
 
-### Users
+#### Get Product Details
+```http
+GET /api/v1/products/{product_id}
+```
+Fetches details for a given product by ID.
+
+##### Response Example (404 Not Found)
+```json
+{
+  "error": "PRODUCT_NOT_FOUND",
+  "message": "Product with ID 'prod_not_found' was not found.",
+  "status_code": 404
+}
+```
+
+---
+
+### User Management
 
 #### Create User
 ```http
 POST /api/v1/users
 ```
+Registers a new user inside the system.
 
-**Request Body**
+##### Request Body
 ```json
 {
-  "email": "user@example.com",
-  "password": "SecurePassword123!"
+  "email": "developer@example.com",
+  "name": "Jane Doe",
+  "role": "engineer"
 }
 ```
 
-**Response (`201 Created`)**
+##### Response Example (201 Created)
 ```json
 {
   "id": "usr_1001",
-  "email": "user@example.com",
-  "created_at": "2023-10-27T10:00:00Z"
+  "email": "developer@example.com",
+  "name": "Jane Doe",
+  "role": "engineer",
+  "created_at": "2026-03-31T12:00:00Z"
 }
 ```
 
@@ -68,13 +99,24 @@ POST /api/v1/users
 ```http
 PUT /api/v1/users/{user_id}
 ```
+Updates an existing user record.
 
-**Response (`200 OK`)**
+##### Request Body
+```json
+{
+  "name": "Jane Smith",
+  "role": "lead_engineer"
+}
+```
+
+##### Response Example (200 OK)
 ```json
 {
   "id": "usr_1001",
-  "email": "updated_user@example.com",
-  "updated_at": "2023-10-27T10:15:00Z"
+  "email": "developer@example.com",
+  "name": "Jane Smith",
+  "role": "lead_engineer",
+  "updated_at": "2026-03-31T12:30:00Z"
 }
 ```
 
@@ -82,25 +124,23 @@ PUT /api/v1/users/{user_id}
 ```http
 DELETE /api/v1/users/{user_id}
 ```
+Deletes a user account.
 
-**Response (`204 No Content`)**
-
-### Telemetry & Intelligence
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/v1/endpoints` | List all discovered API endpoints and their drift status |
-| `GET` | `/api/v1/logs` | Query captured API traffic logs |
-| `POST` | `/api/v1/github/sync` | Trigger manual sync and GitHub PR generation for documentation drift |
+##### Response Example (200 OK)
+```json
+{
+  "success": true,
+  "message": "User usr_9999 successfully deleted."
+}
+```
 
 ## 🛠️ Getting Started
 
 ### Prerequisites
 
-* Python 3.10+
-* PostgreSQL database instance
-* GitHub Personal Access Token (for PR creation features)
-* Google Gemini or Groq API key (for LLM drift analysis)
+* **Python**: `v3.10` or higher
+* **PostgreSQL**: Running instance or local database
+* **API Keys**: Groq API Key or Google Gemini API Key (for LLM analysis) and GitHub Personal Access Token (for PR generation)
 
 ### Installation
 
@@ -112,22 +152,24 @@ DELETE /api/v1/users/{user_id}
 
 2. Create and activate a virtual environment:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python3 -m venv venv
+   source venv/bin/activate
    ```
 
-3. Install the dependencies:
+3. Install requirements:
    ```bash
-   pip install -r requirements.txt
+   pip install fastapi uvicorn "sqlalchemy[asyncio]" asyncpg alembic pydantic pydantic-settings python-dotenv PyJWT "passlib[bcrypt]" bcrypt httpx langchain langchain-groq langchain-google-genai langgraph langchain-core google-generativeai opentelemetry-api opentelemetry-sdk
    ```
 
-4. Configure environment variables in a `.env` file:
+4. Configure environment variables:
+   Create a `.env` file in the root directory:
    ```env
    DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/driftguard
-   SECRET_KEY=your-super-secret-jwt-key
-   GEMINI_API_KEY=your-google-gemini-key
-   GROQ_API_KEY=your-groq-api-key
-   GITHUB_TOKEN=your-github-token
+   SECRET_KEY=your_jwt_secret_key
+   GROQ_API_KEY=your_groq_api_key
+   GEMINI_API_KEY=your_gemini_api_key
+   GITHUB_TOKEN=your_github_token
+   PORT=8000
    ```
 
 ### Running the App
@@ -142,7 +184,9 @@ DELETE /api/v1/users/{user_id}
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
-3. Access the interactive API documentation at `http://localhost:8000/docs`.
+3. Access the API and interactive documentation:
+   * **Swagger UI**: `http://localhost:8000/docs`
+   * **ReDoc**: `http://localhost:8000/redoc`
 
 ## 🤝 Contributing
 
