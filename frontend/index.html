@@ -172,7 +172,7 @@
     <script>
     // Environment auto-detection
     const IS_LOCAL_FRONTEND_SERVER = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (window.location.port === '5500' || window.location.port === '3000');
-    const API = IS_LOCAL_FRONTEND_SERVER ? 'http://localhost:8000' : window.location.origin;
+    const API = IS_LOCAL_FRONTEND_SERVER ? 'http://localhost:8000' : 'https://driftguard-752o.onrender.com';
 
     document.addEventListener('alpine:init', () => {
         Alpine.data('appData', () => ({
@@ -1630,7 +1630,7 @@
         <div x-show="!apiOnline && !loading.stats" class="bg-rose-500/10 border-b border-rose-500/30 px-6 py-2 flex items-center justify-between text-xs text-rose-600 dark:text-rose-300">
             <div class="flex items-center space-x-2">
                 <i data-lucide="wifi-off" class="w-4 h-4 text-rose-500"></i>
-                <span>Unable to reach DriftGuard backend at localhost:8000. Telemetry capture is paused.</span>
+                <span x-text="`Unable to reach DriftGuard backend at ${API}. Telemetry capture is paused.`"></span>
             </div>
             <button @click="fetchAll()" class="border border-rose-500/30 px-2 py-0.5 rounded hover:bg-rose-500/20 text-rose-600 dark:text-rose-200">
                 Reconnect
