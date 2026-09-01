@@ -1,16 +1,26 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
     app_name:    str = "DriftGuard"
     app_version: str = "1.0.0"
     debug:       bool = False
-    secret_key:  str = "change-me-in-production"
+    secret_key:  Optional[str] = None
 
     # Database
     database_url: str
+
+    @model_validator(mode='after')
+    def fix_database_url(self) -> 'Settings':
+        if self.database_url:
+            if self.database_url.startswith("postgres://"):
+                self.database_url = self.database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif self.database_url.startswith("postgresql://"):
+                self.database_url = self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return self
 
     # Gemini (fallback)
     gemini_api_key: str = ""
@@ -47,6 +57,15 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+
+    @model_validator(mode='after')
+    def validate_secret_key(self) -> 'Settings':
+        if not self.secret_key:
+            if self.debug:
+                self.secret_key = "development-secret-key-do-not-use-in-production"
+            else:
+                raise ValueError("CRITICAL: SECRET_KEY environment variable is missing. It MUST be set in production.")
+        return self
 
 
 @lru_cache()

@@ -465,6 +465,39 @@ Navigate to `http://localhost:5500` in your web browser.
 
 ---
 
+## 🚀 Deploying to Render
+
+Deploying DriftGuard to Render is streamlined using the provided `render.yaml` Blueprint.
+
+### AUTOMATED BY render.yaml
+Render will automatically configure the following from the repository blueprint:
+- Provision a completely fresh PostgreSQL database (`driftguard-db`).
+- Build and deploy the Web Service (`driftguard`) using the repository's `Dockerfile`.
+- Bind the correct `$PORT`.
+- Set `DEBUG=false`.
+- Pass the internal PostgreSQL connection string dynamically to `DATABASE_URL`.
+- Generate a cryptographically secure random `SECRET_KEY`.
+
+### MANUAL CONFIGURATION REQUIRED
+Follow these steps to deploy:
+
+1. **Push repository to GitHub**: Ensure the latest codebase (including `render.yaml`) is in your GitHub repository.
+2. **Open Render**: Go to your Render Dashboard and select **New > Blueprint**.
+3. **Select the DriftGuard repository**: Connect your GitHub account and select your repository.
+4. **Render reads `render.yaml`**: Render will automatically detect the database and web service configuration.
+5. **Enter required secret values**: During setup, Render will prompt you for the following secrets (marked as `sync: false` in the blueprint):
+   - `GROQ_API_KEY` (Required for primary fast inference)
+   - `GEMINI_API_KEY` (Optional fallback)
+   - `GITHUB_CLIENT_ID` (Required for GitHub OAuth)
+   - `GITHUB_CLIENT_SECRET` (Required for GitHub OAuth)
+6. **Deploy**: Click "Apply" to create the database and web service. *Note: Database initialization is automatic on the first startup!*
+7. **Get the Render URL**: Once deployed, copy your public Render URL (e.g., `https://driftguard-xxxx.onrender.com`).
+8. **Configure GitHub OAuth callback**: Update your GitHub OAuth Application settings to use the new URL:
+   - Homepage URL: `https://driftguard-xxxx.onrender.com`
+   - Authorization callback URL: `https://driftguard-xxxx.onrender.com/api/auth/github/callback`
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

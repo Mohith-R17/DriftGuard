@@ -30,7 +30,7 @@ async def get_db():
 
 
 async def create_tables():
-    from app.models import APILog, Endpoint, Documentation, DocHistory
+    from app.models import APILog, Endpoint, Documentation, DocHistory, User
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

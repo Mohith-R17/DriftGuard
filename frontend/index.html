@@ -171,8 +171,8 @@
 
     <script>
     // Environment auto-detection
-    const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const API = IS_LOCAL ? 'http://localhost:8000' : 'https://livedocai-production.up.railway.app';
+    const IS_LOCAL_FRONTEND_SERVER = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (window.location.port === '5500' || window.location.port === '3000');
+    const API = IS_LOCAL_FRONTEND_SERVER ? 'http://localhost:8000' : window.location.origin;
 
     document.addEventListener('alpine:init', () => {
         Alpine.data('appData', () => ({

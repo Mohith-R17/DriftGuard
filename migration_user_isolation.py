@@ -20,10 +20,10 @@ async def run():
             await db.execute(text("CREATE INDEX IF NOT EXISTS idx_api_logs_user_id ON api_logs(user_id)"))
             await db.execute(text("CREATE INDEX IF NOT EXISTS idx_endpoints_user_id ON endpoints(user_id)"))
             await db.commit()
-            print("✅ Migration complete!")
+            print("Migration complete!")
         except Exception as e:
             await db.rollback()
-            print(f"❌ Migration failed: {e}")
+            print(f"Migration failed: {e}")
             raise
 
 asyncio.run(run())

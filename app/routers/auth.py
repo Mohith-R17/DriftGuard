@@ -14,6 +14,8 @@ import httpx
 from datetime import datetime, timedelta
 from typing import Optional
 
+from passlib.context import CryptContext
+
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,8 +40,21 @@ GITHUB_SCOPE         = "repo,read:user,user:email"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if not hashed_password:
+        return False
+    # Check for legacy SHA256 hashes (exactly 64 hex chars)
+    if len(hashed_password) == 64 and all(c in "0123456789abcdefABCDEF" for c in hashed_password):
+        return hashlib.sha256(plain_password.encode()).hexdigest().lower() == hashed_password.lower()
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
 
 def create_jwt(user_id: str, email: str) -> str:
     payload = {
@@ -126,7 +141,7 @@ async def signin(body: SigninRequest, db: AsyncSession = Depends(get_db)):
         {"email": body.email.lower().strip()}
     )
     row = result.fetchone()
-    if not row or row.password != hash_password(body.password):
+    if not row or not verify_password(body.password, row.password):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
     token   = create_jwt(row.id, row.email)

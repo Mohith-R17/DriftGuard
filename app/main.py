@@ -213,9 +213,10 @@ async def delete_user(user_id: str):
     return None
 
 # ─────────────────────────────────────────────────────────────
-# HEALTH ROUTES (ORIGINAL)
 # ─────────────────────────────────────────────────────────────
-@app.get("/")
+# HEALTH ROUTES
+# ─────────────────────────────────────────────────────────────
+@app.get("/api")
 async def root():
     return {
         "status": "ok",
@@ -226,4 +227,15 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+# ─────────────────────────────────────────────────────────────
+# FRONTEND MOUNT
+# ─────────────────────────────────────────────────────────────
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Serve the frontend statically if the directory exists
+frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
 
