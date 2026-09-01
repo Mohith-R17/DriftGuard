@@ -281,8 +281,12 @@ async def analyze_repo(body: AnalyzeRequest, db: AsyncSession = Depends(get_db))
     llm = get_llm(use_gemini=True)
 
     async def invoke(prompt: str) -> str:
-        result = await llm.ainvoke(prompt)
-        return result.content if hasattr(result, 'content') else str(result)
+        try:
+            result = await llm.ainvoke(prompt)
+            return result.content if hasattr(result, 'content') else str(result)
+        except Exception as e:
+            logger.error(f"LLM Error: {e}")
+            raise HTTPException(status_code=500, detail=f"AI generation failed. Please check model limits or configuration. Details: {str(e)}")
 
     # Drift detection — compare existing README vs actual code
     drift_detected = "NO"

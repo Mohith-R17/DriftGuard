@@ -1,10 +1,10 @@
 """
-AI Analysis Pipeline — Gemini 2.5 Flash
+AI Analysis Pipeline — Gemini 3.6 Flash
 ─────────────────────────────────────────
 Graph:
   [analyze_behavior] → [detect_drift] → [generate_docs] → END
 
-Switched from Ollama/llama3.2 to Gemini 2.5 Flash.
+Switched from Ollama/llama3.2 to Gemini 3.6 Flash.
 Falls back to Ollama if Gemini key not configured.
 """
 
@@ -31,7 +31,7 @@ def get_llm(use_gemini: bool = False):
     Priority:
       1. OpenRouter — if OPENROUTER_API_KEY is set
       2. Groq (llama-3.3-70b) — 14,400 req/day, 30 req/min, very fast
-      3. Gemini 2.5 Flash — fallback if no Groq key
+      3. Gemini 3.6 Flash — fallback if no Groq key
     """
     # ── OpenRouter (primary) ───────────────────────────────────────
     if settings.openrouter_api_key:

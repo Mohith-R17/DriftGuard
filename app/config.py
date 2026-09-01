@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Gemini (fallback)
     gemini_api_key: str = ""
-    gemini_model:   str = "gemini-2.5-flash"
+    gemini_model:   str = "gemini-3.6-flash"
 
     # OpenRouter (primary, when no Groq key)
     openrouter_api_key: str = ""

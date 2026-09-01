@@ -363,7 +363,7 @@ GROK_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.3-70b-versatile
 
 GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.6-flash
 
 # GitHub Integration
 GITHUB_TOKEN=your_github_personal_access_token
@@ -409,7 +409,7 @@ Navigate to `http://localhost:5500` in your web browser.
 | `GROK_API_KEY` | Optional | Groq API key for Llama 3.3 70B high-throughput inference |
 | `GROQ_MODEL` | Optional | Model identifier for Groq (default: `llama-3.3-70b-versatile`) |
 | `GEMINI_API_KEY` | Optional | Google Gemini API key for fallback inference |
-| `GEMINI_MODEL` | Optional | Model identifier for Gemini (default: `gemini-2.5-flash`) |
+| `GEMINI_MODEL` | Optional | Model identifier for Gemini (default: `gemini-3.6-flash`) |
 | `GITHUB_TOKEN` | Optional | GitHub PAT for server-level fallback on Git write operations |
 | `GITHUB_CLIENT_ID` | Optional | GitHub OAuth App Client ID for user sign-in |
 | `GITHUB_CLIENT_SECRET` | Optional | GitHub OAuth App Client Secret |
