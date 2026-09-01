@@ -11,7 +11,9 @@ services:
       - key: DEBUG
         value: "false"
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: driftguard-db
+          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: GROQ_API_KEY
@@ -22,3 +24,9 @@ services:
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
+
+databases:
+  - name: driftguard-db
+    databaseName: driftguard
+    user: driftguard
+    plan: free
