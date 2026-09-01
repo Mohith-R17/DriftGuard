@@ -245,7 +245,7 @@ async def analyze_repo(body: AnalyzeRequest, db: AsyncSession = Depends(get_db))
                 f"https://api.github.com/repos/{owner}/{repo}/readme", headers=headers)
             if r.is_success:
                 readme_content = base64.b64decode(
-                    r.json().get("content","")).decode("utf-8", errors="replace")[:3000]
+                    r.json().get("content","")).decode("utf-8", errors="replace")[:10000]
         except: pass
 
         # ── Get latest 2 commits for diff detection ───────────
@@ -264,10 +264,10 @@ async def analyze_repo(body: AnalyzeRequest, db: AsyncSession = Depends(get_db))
                     f"https://api.github.com/repos/{owner}/{repo}/compare/{prev_sha}...{latest_sha}",
                     headers={**headers, "Accept": "application/vnd.github.v3.diff"})
                 if diff_res.is_success:
-                    diff_text = diff_res.text[:3000]
+                    diff_text = diff_res.text[:10000]
                     # Count changed files
                     changed = [l for l in diff_text.split("\n") if l.startswith("diff --git")]
-                    diff_summary = f"{len(changed)} file(s) changed in latest commit.\n" + diff_text[:1500]
+                    diff_summary = f"{len(changed)} file(s) changed in latest commit.\n" + diff_text[:8000]
             except: pass
 
         # ── Get repo info ─────────────────────────────────────
@@ -288,6 +288,13 @@ async def analyze_repo(body: AnalyzeRequest, db: AsyncSession = Depends(get_db))
             logger.error(f"LLM Error: {e}")
             raise HTTPException(status_code=500, detail=f"AI generation failed. Please check model limits or configuration. Details: {str(e)}")
 
+    # ── Move code_section generation up for drift detection ───
+    code_section = "\n\n".join([
+        f"### {path}\n```\n{code[:2000]}\n```"
+        for path, code in list(file_contents.items())[:6]
+        if path not in ['requirements.txt','package.json','pyproject.toml']
+    ]) or "No source files found."
+
     # Drift detection — compare existing README vs actual code
     drift_detected = "NO"
     drift_summary_text = None
@@ -296,14 +303,14 @@ async def analyze_repo(body: AnalyzeRequest, db: AsyncSession = Depends(get_db))
         drift_prompt = f"""You are analyzing whether documentation is outdated compared to the actual code.
 
 Repository: {owner}/{repo}
-Latest commit changes:
-{diff_summary[:1000]}
+Latest commit changes (Diff):
+{diff_summary}
 
 Existing README/docs:
-{readme_content[:1000]}
+{readme_content[:8000]}
 
-Current code files:
-{list(file_contents.keys())}
+Current code files context:
+{code_section}
 
 Answer EXACTLY:
 DRIFT: YES or NO
@@ -329,12 +336,6 @@ REASON: one sentence explaining what changed that makes docs outdated, or "Docum
     deps_lines = [l.strip() for l in deps_content.split('\n')
                   if l.strip() and not l.startswith('#')][:20]
     deps_str = ', '.join(deps_lines) if deps_lines else 'Not found'
-
-    code_section = "\n\n".join([
-        f"### {path}\n```\n{code[:2000]}\n```"
-        for path, code in list(file_contents.items())[:6]
-        if path not in ['requirements.txt','package.json','pyproject.toml']
-    ]) or "No source files found."
 
     file_list = list(file_contents.keys())
     traffic_summary = await _get_traffic_summary()
