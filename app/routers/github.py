@@ -352,19 +352,24 @@ Live API Observability & Traffic:
 
 Source code excerpts:
 {code_section[:4000]}
+CRITICAL INSTRUCTIONS:
+- Generate exactly one cohesive Markdown document.
+- Do NOT duplicate or repeat any sections (e.g., only one "Features", one "Tech Stack", one "API Reference").
+- Ensure all JSON examples are perfectly valid (correct commas, matching quotes, no duplicate keys).
+- Output ONLY the Markdown document, with no introductory or concluding conversational text.
 
-Write a complete, professional README.md with these exact sections:
+Write a complete, professional README.md with exactly these sections (and do not repeat them):
 # {proj_name}
 > {proj_desc or 'Autonomous API Service'}
 
 ## 🚀 Features
-(4-6 key features based on the code)
+(4-6 key features based on the code. Do not duplicate.)
 
 ## 📦 Tech Stack
-(List key technologies from dependencies)
+(List key technologies from dependencies. Do not duplicate.)
 
 ## 📡 API Reference
-(Document main endpoints with methods, paths, request/response examples based on the code)
+(Document main endpoints with methods, paths, request/response examples based on the code. Ensure no duplicate endpoint definitions.)
 
 ## 🛠️ Getting Started
 ### Prerequisites
