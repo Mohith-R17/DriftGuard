@@ -4,6 +4,7 @@ services:
   - type: web
     name: driftguard
     env: docker
+    plan: free
     autoDeploy: true
     healthCheckPath: /health
     envVars:
@@ -28,3 +29,4 @@ databases:
   - name: driftguard-db
     databaseName: driftguard
     user: driftguard
+    plan: free
