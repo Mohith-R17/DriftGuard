@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+    <title>DriftGuard Favicon</title>
+    <!-- Gradient definition -->
+    <defs>
+        <linearGradient id="shieldGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#3b82f6" />
+            <stop offset="100%" stop-color="#1d4ed8" />
+        </linearGradient>
+        <linearGradient id="pulseGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#60a5fa" />
+            <stop offset="100%" stop-color="#ffffff" />
+        </linearGradient>
+    </defs>
+    <!-- Background Shield -->
+    <path d="M256 32 L64 96 V224 C64 352 144 448 256 480 C368 448 448 352 448 224 V96 Z" 
+          fill="url(#shieldGrad)" />
+    <!-- Network/Pulse Graphic -->
+    <path d="M160 256 L224 256 L256 160 L320 352 L352 256 L448 256" 
+          stroke="url(#pulseGrad)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="256" cy="160" r="24" fill="#ffffff" />
+    <circle cx="320" cy="352" r="24" fill="#ffffff" />
+    <circle cx="160" cy="256" r="24" fill="#ffffff" />
+</svg>
